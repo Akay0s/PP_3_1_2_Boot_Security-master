@@ -9,6 +9,7 @@ import ru.kata.spring.boot_security.demo.service.RoleService;
 import ru.kata.spring.boot_security.demo.service.UserService;
 
 import javax.validation.Valid;
+import java.security.Principal;
 
 @Controller
 @RequestMapping("/admin")
@@ -23,15 +24,33 @@ public class AdminController {
     }
 
     @GetMapping
-    public String showUserList(Model model) {
+    public String showUserList(
+            @RequestParam(value = "editId", required = false) Long editId,
+            @RequestParam(value = "deleteId", required = false) Long deleteId,
+            Model model,
+            Principal principal) {
+
+        User authUser = userService.findUserByUsername(principal.getName());
+        model.addAttribute("authUser", authUser);
         model.addAttribute("users", userService.findAll());
+        model.addAttribute("allRoles", roleService.getRoles());
+        if (editId != null) {
+            User editUser = userService.findById(editId);
+            model.addAttribute("editUser", editUser);
+        }
+        if (deleteId != null) {
+            User deleteUser = userService.findById(deleteId);
+            model.addAttribute("deleteUser", deleteUser);
+        }
         return "admin";
     }
 
     @GetMapping("/new")
-    public String createUser(User user, Model model) {
-        model.addAttribute("user", user);
-        model.addAttribute("roles", roleService.getRoles());
+    public String createUser(Model model, Principal principal) {
+        User authUser = userService.findUserByUsername(principal.getName());
+        model.addAttribute("authUser", authUser);
+        model.addAttribute("user", new User());
+        model.addAttribute("allRoles", roleService.getRoles());
         return "new";
     }
 
@@ -44,15 +63,18 @@ public class AdminController {
         return "redirect:/admin";
     }
 
-    @GetMapping("/update/{id}")
-    public String updateUser(@PathVariable("id") Long id, Model model) {
+    @GetMapping("/edit/{id}")
+    public String editUser(@PathVariable("id") Long id, Model model, Principal principal) {
+        User authUser = userService.findUserByUsername(principal.getName());
+        model.addAttribute("authUser", authUser);
         model.addAttribute("user", userService.findById(id));
-        model.addAttribute("roles", roleService.getRoles());
-        return "update";
+        model.addAttribute("users", userService.findAll());
+        model.addAttribute("allRoles", roleService.getRoles());
+        return "admin";
     }
 
     @PostMapping("/update")
-    public String updateUser(@ModelAttribute("user") User user) {
+    public String updateUser(@ModelAttribute("editUser") User user) {
         userService.update(user);
         return "redirect:/admin";
     }
